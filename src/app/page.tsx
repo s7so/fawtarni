@@ -57,7 +57,6 @@ function FeatureCard({
   titleAr,
   titleEn,
   descAr,
-  index,
 }: {
   icon: string;
   titleAr: string;
@@ -194,6 +193,12 @@ export default function Home() {
               className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
             >
               الأسعار
+            </Link>
+            <Link
+              href="/dashboard"
+              className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
+            >
+              لوحة التحكم
             </Link>
             <Link
               href="/create"
