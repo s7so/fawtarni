@@ -40,6 +40,9 @@ export default function Home() {
             <a href="#how-it-works" className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline">
               كيف يعمل
             </a>
+            <Link href="/pricing" className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline">
+              الأسعار
+            </Link>
             <Link
               href="/create"
               className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm"
