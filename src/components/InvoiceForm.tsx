@@ -52,7 +52,7 @@ function FormField({
 
 export default function InvoiceForm() {
   const [invoice, setInvoice] = useState<InvoiceData>(createEmptyInvoice);
-  const [showPreview, setShowPreview] = useState(false);
+  const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [generating, setGenerating] = useState(false);
 
   const updateField = useCallback(
@@ -171,12 +171,29 @@ export default function InvoiceForm() {
             فوترني <span className="text-emerald-200 text-sm font-normal">Fawtarni</span>
           </a>
           <div className="flex gap-3">
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors"
-            >
-              {showPreview ? "✏️ تعديل" : "👁️ معاينة"}
-            </button>
+            {/* Tab Switcher */}
+            <div className="flex bg-emerald-800 rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab("form")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "form"
+                    ? "bg-white text-emerald-700"
+                    : "text-emerald-200 hover:text-white"
+                }`}
+              >
+                ✏️ تعديل
+              </button>
+              <button
+                onClick={() => setActiveTab("preview")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "preview"
+                    ? "bg-white text-emerald-700"
+                    : "text-emerald-200 hover:text-white"
+                }`}
+              >
+                👁️ معاينة
+              </button>
+            </div>
             <button
               onClick={handleDownloadPDF}
               disabled={generating}
@@ -188,15 +205,17 @@ export default function InvoiceForm() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6">
-        {showPreview ? (
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Preview Tab */}
+        {activeTab === "preview" && (
           <div className="mb-6">
             <InvoicePreview invoice={invoice} />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Form */}
-            <div className="lg:col-span-3 space-y-6">
+        )}
+
+        {/* Form Tab */}
+        {activeTab === "form" && (
+          <div className="space-y-6">
               {/* Invoice Settings */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <SectionTitle ar="إعدادات الفاتورة" en="Invoice Settings" />
@@ -468,19 +487,14 @@ export default function InvoiceForm() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
                 />
               </div>
-            </div>
 
-            {/* Side Preview */}
-            <div className="lg:col-span-2">
-              <div className="sticky top-20">
-                <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
-                  👁️ معاينة مباشرة / Live Preview
-                </h3>
-                <div className="transform scale-[0.55] origin-top-right -mr-[40%]">
-                  <InvoicePreview invoice={invoice} />
-                </div>
-              </div>
-            </div>
+              {/* Preview Button at Bottom */}
+              <button
+                onClick={() => setActiveTab("preview")}
+                className="w-full py-4 bg-emerald-600 text-white rounded-xl text-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                👁️ معاينة الفاتورة / Preview Invoice
+              </button>
           </div>
         )}
       </div>
