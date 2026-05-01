@@ -190,6 +190,12 @@ export default function Home() {
               كيف يعمل
             </a>
             <Link
+              href="/pricing"
+              className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
+            >
+              الأسعار
+            </Link>
+            <Link
               href="/create"
               className="relative px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl text-sm font-bold hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-lg shadow-emerald-600/25 hover:shadow-emerald-600/40 hover:scale-105 active:scale-95"
             >
