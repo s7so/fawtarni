@@ -10,6 +10,7 @@ import {
   saveSellerData,
   saveSellerLogo,
   removeSellerLogo,
+  consumeNextInvoiceNumber,
   saveInvoice,
   loadInvoiceHistory,
   deleteInvoice,
@@ -222,6 +223,8 @@ export default function InvoiceForm() {
     });
     if (invoice.sellerLogo) {
       saveSellerLogo(invoice.sellerLogo);
+    } else {
+      removeSellerLogo();
     }
     setSellerSaved(true);
     setTimeout(() => setSellerSaved(false), 2000);
@@ -251,6 +254,7 @@ export default function InvoiceForm() {
 
   const handleSaveInvoice = useCallback(() => {
     if (!invoice) return;
+    consumeNextInvoiceNumber();
     const saved: SavedInvoice = {
       id: invoice.invoiceNumber,
       invoiceNumber: invoice.invoiceNumber,

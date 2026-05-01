@@ -53,7 +53,13 @@ export function loadSellerData(): SellerData | null {
   }
 }
 
-export function getNextInvoiceNumber(): string {
+export function peekNextInvoiceNumber(): string {
+  const raw = safeGet(INVOICE_COUNTER_KEY);
+  const counter = raw ? Number(raw) + 1 : 1;
+  return `INV-${String(counter).padStart(4, "0")}`;
+}
+
+export function consumeNextInvoiceNumber(): string {
   const raw = safeGet(INVOICE_COUNTER_KEY);
   const counter = raw ? Number(raw) + 1 : 1;
   safeSet(INVOICE_COUNTER_KEY, String(counter));

@@ -47,10 +47,10 @@ export const CURRENCIES: Record<string, { symbol: string; nameAr: string; nameEn
   JOD: { symbol: "د.أ", nameAr: "دينار أردني", nameEn: "Jordanian Dinar" },
 };
 
-import { getNextInvoiceNumber, loadSellerData, loadSellerLogo } from "./storage";
+import { peekNextInvoiceNumber, loadSellerData, loadSellerLogo } from "./storage";
 
 export function generateInvoiceNumber(): string {
-  return getNextInvoiceNumber();
+  return peekNextInvoiceNumber();
 }
 
 export function createEmptyInvoice(): InvoiceData {
