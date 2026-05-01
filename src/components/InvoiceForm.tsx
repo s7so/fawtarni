@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
 import InvoicePreview from "./InvoicePreview";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 
 function SectionTitle({ ar, en }: { ar: string; en: string }) {
   return (
@@ -51,13 +53,17 @@ function FormField({
 }
 
 export default function InvoiceForm() {
-  const [invoice, setInvoice] = useState<InvoiceData>(createEmptyInvoice);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [generating, setGenerating] = useState(false);
 
+  useEffect(() => {
+    setInvoice(createEmptyInvoice());
+  }, []);
+
   const updateField = useCallback(
     <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
-      setInvoice((prev) => ({ ...prev, [field]: value }));
+      setInvoice((prev) => prev ? { ...prev, [field]: value } : prev);
     },
     []
   );
@@ -73,6 +79,7 @@ export default function InvoiceForm() {
   const updateItem = useCallback(
     (id: string, field: keyof InvoiceItem, value: string | number) => {
       setInvoice((prev) => {
+        if (!prev) return prev;
         const items = prev.items.map((item) => {
           if (item.id !== id) return item;
           const updated = { ...item, [field]: value };
@@ -89,18 +96,22 @@ export default function InvoiceForm() {
   );
 
   const addItem = useCallback(() => {
-    setInvoice((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, total: 0 },
-      ],
-    }));
+    setInvoice((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: [
+          ...prev.items,
+          { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, total: 0 },
+        ],
+      };
+    });
   }, []);
 
   const removeItem = useCallback(
     (id: string) => {
       setInvoice((prev) => {
+        if (!prev) return prev;
         const items = prev.items.filter((item) => item.id !== id);
         if (items.length === 0) return prev;
         const totals = recalculate(items, prev.taxRate, prev.discount);
@@ -114,6 +125,7 @@ export default function InvoiceForm() {
     (rate: string) => {
       const taxRate = Number(rate) || 0;
       setInvoice((prev) => {
+        if (!prev) return prev;
         const totals = recalculate(prev.items, taxRate, prev.discount);
         return { ...prev, taxRate, ...totals };
       });
@@ -125,6 +137,7 @@ export default function InvoiceForm() {
     (val: string) => {
       const discount = Number(val) || 0;
       setInvoice((prev) => {
+        if (!prev) return prev;
         const totals = recalculate(prev.items, prev.taxRate, discount);
         return { ...prev, discount, ...totals };
       });
@@ -133,11 +146,9 @@ export default function InvoiceForm() {
   );
 
   const handleDownloadPDF = useCallback(async () => {
+    if (!invoice) return;
     setGenerating(true);
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
-
       const element = document.getElementById("invoice-preview");
       if (!element) return;
 
@@ -160,7 +171,18 @@ export default function InvoiceForm() {
     } finally {
       setGenerating(false);
     }
-  }, [invoice.invoiceNumber]);
+  }, [invoice]);
+
+  if (!invoice) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -204,6 +226,13 @@ export default function InvoiceForm() {
           </div>
         </div>
       </header>
+
+      {/* Hidden preview for PDF generation (always in DOM) */}
+      {activeTab !== "preview" && (
+        <div className="fixed left-[-9999px] top-0" aria-hidden="true">
+          <InvoicePreview invoice={invoice} />
+        </div>
+      )}
 
       <div className="max-w-4xl mx-auto p-6">
         {/* Preview Tab */}
