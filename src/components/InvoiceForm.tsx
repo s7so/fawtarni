@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
 import InvoicePreview from "./InvoicePreview";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 
 function SectionTitle({ ar, en }: { ar: string; en: string }) {
   return (
@@ -51,13 +53,17 @@ function FormField({
 }
 
 export default function InvoiceForm() {
-  const [invoice, setInvoice] = useState<InvoiceData>(createEmptyInvoice);
-  const [showPreview, setShowPreview] = useState(false);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    setInvoice(createEmptyInvoice());
+  }, []);
 
   const updateField = useCallback(
     <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
-      setInvoice((prev) => ({ ...prev, [field]: value }));
+      setInvoice((prev) => prev ? { ...prev, [field]: value } : prev);
     },
     []
   );
@@ -73,6 +79,7 @@ export default function InvoiceForm() {
   const updateItem = useCallback(
     (id: string, field: keyof InvoiceItem, value: string | number) => {
       setInvoice((prev) => {
+        if (!prev) return prev;
         const items = prev.items.map((item) => {
           if (item.id !== id) return item;
           const updated = { ...item, [field]: value };
@@ -89,18 +96,22 @@ export default function InvoiceForm() {
   );
 
   const addItem = useCallback(() => {
-    setInvoice((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, total: 0 },
-      ],
-    }));
+    setInvoice((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: [
+          ...prev.items,
+          { id: crypto.randomUUID(), description: "", quantity: 1, unitPrice: 0, total: 0 },
+        ],
+      };
+    });
   }, []);
 
   const removeItem = useCallback(
     (id: string) => {
       setInvoice((prev) => {
+        if (!prev) return prev;
         const items = prev.items.filter((item) => item.id !== id);
         if (items.length === 0) return prev;
         const totals = recalculate(items, prev.taxRate, prev.discount);
@@ -114,6 +125,7 @@ export default function InvoiceForm() {
     (rate: string) => {
       const taxRate = Number(rate) || 0;
       setInvoice((prev) => {
+        if (!prev) return prev;
         const totals = recalculate(prev.items, taxRate, prev.discount);
         return { ...prev, taxRate, ...totals };
       });
@@ -125,6 +137,7 @@ export default function InvoiceForm() {
     (val: string) => {
       const discount = Number(val) || 0;
       setInvoice((prev) => {
+        if (!prev) return prev;
         const totals = recalculate(prev.items, prev.taxRate, discount);
         return { ...prev, discount, ...totals };
       });
@@ -133,19 +146,37 @@ export default function InvoiceForm() {
   );
 
   const handleDownloadPDF = useCallback(async () => {
+    if (!invoice) return;
     setGenerating(true);
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
+      const wrapper = document.createElement("div");
+      wrapper.style.position = "fixed";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
+      wrapper.style.width = "794px";
+      wrapper.style.backgroundColor = "#ffffff";
+      wrapper.style.zIndex = "-9999";
 
       const element = document.getElementById("invoice-preview");
       if (!element) return;
 
-      const canvas = await html2canvas(element, {
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.width = "794px";
+      clone.style.maxWidth = "794px";
+      clone.style.margin = "0";
+      clone.style.padding = "32px";
+      clone.style.boxSizing = "border-box";
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
+        width: 794,
       });
+
+      document.body.removeChild(wrapper);
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
@@ -160,7 +191,18 @@ export default function InvoiceForm() {
     } finally {
       setGenerating(false);
     }
-  }, [invoice.invoiceNumber]);
+  }, [invoice]);
+
+  if (!invoice) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -171,12 +213,29 @@ export default function InvoiceForm() {
             فوترني <span className="text-emerald-200 text-sm font-normal">Fawtarni</span>
           </a>
           <div className="flex gap-3">
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors"
-            >
-              {showPreview ? "✏️ تعديل" : "👁️ معاينة"}
-            </button>
+            {/* Tab Switcher */}
+            <div className="flex bg-emerald-800 rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab("form")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "form"
+                    ? "bg-white text-emerald-700"
+                    : "text-emerald-200 hover:text-white"
+                }`}
+              >
+                ✏️ تعديل
+              </button>
+              <button
+                onClick={() => setActiveTab("preview")}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "preview"
+                    ? "bg-white text-emerald-700"
+                    : "text-emerald-200 hover:text-white"
+                }`}
+              >
+                👁️ معاينة
+              </button>
+            </div>
             <button
               onClick={handleDownloadPDF}
               disabled={generating}
@@ -188,15 +247,24 @@ export default function InvoiceForm() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6">
-        {showPreview ? (
+      {/* Hidden preview for PDF generation (always in DOM) */}
+      {activeTab !== "preview" && (
+        <div className="fixed left-[-9999px] top-0" aria-hidden="true">
+          <InvoicePreview invoice={invoice} />
+        </div>
+      )}
+
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Preview Tab */}
+        {activeTab === "preview" && (
           <div className="mb-6">
             <InvoicePreview invoice={invoice} />
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Form */}
-            <div className="lg:col-span-3 space-y-6">
+        )}
+
+        {/* Form Tab */}
+        {activeTab === "form" && (
+          <div className="space-y-6">
               {/* Invoice Settings */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <SectionTitle ar="إعدادات الفاتورة" en="Invoice Settings" />
@@ -468,19 +536,14 @@ export default function InvoiceForm() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
                 />
               </div>
-            </div>
 
-            {/* Side Preview */}
-            <div className="lg:col-span-2">
-              <div className="sticky top-20">
-                <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
-                  👁️ معاينة مباشرة / Live Preview
-                </h3>
-                <div className="transform scale-[0.55] origin-top-right -mr-[40%]">
-                  <InvoicePreview invoice={invoice} />
-                </div>
-              </div>
-            </div>
+              {/* Preview Button at Bottom */}
+              <button
+                onClick={() => setActiveTab("preview")}
+                className="w-full py-4 bg-emerald-600 text-white rounded-xl text-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                👁️ معاينة الفاتورة / Preview Invoice
+              </button>
           </div>
         )}
       </div>
