@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice, saveSellerData } from "@/lib/types";
 import InvoicePreview from "./InvoicePreview";
 
@@ -51,14 +51,13 @@ function FormField({
 }
 
 export default function InvoiceForm() {
-  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [invoice, setInvoice] = useState<InvoiceData | null>(() => {
+    if (typeof window === "undefined") return null;
+    return createEmptyInvoice();
+  });
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [generating, setGenerating] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
-
-  useEffect(() => {
-    setInvoice(createEmptyInvoice());
-  }, []);
 
   const updateField = useCallback(
     <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
