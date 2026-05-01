@@ -369,14 +369,18 @@ export default function InvoiceForm() {
 
               {/* Seller Info */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-4">
-                  <SectionTitle ar="بيانات البائع" en="Seller Information" />
-                  <button
-                    onClick={handleSaveSellerData}
-                    className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors flex items-center gap-1"
-                  >
-                    {savedNotice ? "تم الحفظ!" : "💾 حفظ بياناتي"}
-                  </button>
+                <div className="border-b-2 border-emerald-200 pb-2 mb-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-emerald-700">
+                      بيانات البائع <span className="text-gray-400 font-normal text-sm">/ Seller Information</span>
+                    </h2>
+                    <button
+                      onClick={handleSaveSellerData}
+                      className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors flex items-center gap-1"
+                    >
+                      {savedNotice ? "تم الحفظ!" : "💾 حفظ بياناتي"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Logo Upload */}
