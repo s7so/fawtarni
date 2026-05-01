@@ -3,8 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
 import InvoicePreview from "./InvoicePreview";
-import html2canvas from "html2canvas-pro";
-import { jsPDF } from "jspdf";
 
 function SectionTitle({ ar, en }: { ar: string; en: string }) {
   return (
@@ -148,8 +146,12 @@ export default function InvoiceForm() {
   const handleDownloadPDF = useCallback(async () => {
     if (!invoice) return;
     setGenerating(true);
+    let wrapper: HTMLDivElement | null = null;
     try {
-      const wrapper = document.createElement("div");
+      const html2canvas = (await import("html2canvas-pro")).default;
+      const { jsPDF } = await import("jspdf");
+
+      wrapper = document.createElement("div");
       wrapper.style.position = "fixed";
       wrapper.style.left = "-9999px";
       wrapper.style.top = "0";
@@ -176,8 +178,6 @@ export default function InvoiceForm() {
         width: 794,
       });
 
-      document.body.removeChild(wrapper);
-
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -189,6 +189,9 @@ export default function InvoiceForm() {
       console.error("PDF generation failed:", err);
       alert("حدث خطأ أثناء إنشاء الـ PDF. يرجى المحاولة مرة أخرى.");
     } finally {
+      if (wrapper && wrapper.parentNode) {
+        document.body.removeChild(wrapper);
+      }
       setGenerating(false);
     }
   }, [invoice]);
