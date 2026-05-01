@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
 import InvoicePreview from "./InvoicePreview";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
+import Link from "next/link";
+import {
+  saveSellerData,
+  saveSellerLogo,
+  removeSellerLogo,
+  saveInvoice,
+  loadInvoiceHistory,
+  deleteInvoice,
+  loadInvoiceById,
+} from "@/lib/storage";
+import type { SavedInvoice } from "@/lib/storage";
 
 function SectionTitle({ ar, en }: { ar: string; en: string }) {
   return (
@@ -53,13 +64,19 @@ function FormField({
 }
 
 export default function InvoiceForm() {
-  const [invoice, setInvoice] = useState<InvoiceData | null>(null);
-  const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
+  const [invoice, setInvoice] = useState<InvoiceData | null>(() => {
+    if (typeof window === "undefined") return null;
+    return createEmptyInvoice();
+  });
+  const [activeTab, setActiveTab] = useState<"form" | "preview" | "history">("form");
   const [generating, setGenerating] = useState(false);
-
-  useEffect(() => {
-    setInvoice(createEmptyInvoice());
-  }, []);
+  const [sellerSaved, setSellerSaved] = useState(false);
+  const [invoiceSaved, setInvoiceSaved] = useState(false);
+  const [history, setHistory] = useState<SavedInvoice[]>(() => {
+    if (typeof window === "undefined") return [];
+    return loadInvoiceHistory();
+  });
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const updateField = useCallback(
     <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
@@ -193,6 +210,85 @@ export default function InvoiceForm() {
     }
   }, [invoice]);
 
+  const handleSaveSellerData = useCallback(() => {
+    if (!invoice) return;
+    saveSellerData({
+      sellerName: invoice.sellerName,
+      sellerNameEn: invoice.sellerNameEn,
+      sellerAddress: invoice.sellerAddress,
+      sellerTaxNumber: invoice.sellerTaxNumber,
+      sellerPhone: invoice.sellerPhone,
+      sellerEmail: invoice.sellerEmail,
+    });
+    if (invoice.sellerLogo) {
+      saveSellerLogo(invoice.sellerLogo);
+    }
+    setSellerSaved(true);
+    setTimeout(() => setSellerSaved(false), 2000);
+  }, [invoice]);
+
+  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) {
+      alert("حجم الصورة يجب أن يكون أقل من 500 كيلوبايت");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      updateField("sellerLogo", dataUrl);
+      saveSellerLogo(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }, [updateField]);
+
+  const handleRemoveLogo = useCallback(() => {
+    updateField("sellerLogo", "");
+    removeSellerLogo();
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  }, [updateField]);
+
+  const handleSaveInvoice = useCallback(() => {
+    if (!invoice) return;
+    const saved: SavedInvoice = {
+      id: invoice.invoiceNumber,
+      invoiceNumber: invoice.invoiceNumber,
+      buyerName: invoice.buyerName || invoice.buyerNameEn || "—",
+      totalAmount: invoice.totalAmount,
+      currency: invoice.currency,
+      issueDate: invoice.issueDate,
+      savedAt: new Date().toISOString(),
+      data: JSON.stringify(invoice),
+    };
+    saveInvoice(saved);
+    setHistory(loadInvoiceHistory());
+    setInvoiceSaved(true);
+    setTimeout(() => setInvoiceSaved(false), 2000);
+  }, [invoice]);
+
+  const handleLoadInvoice = useCallback((id: string) => {
+    const saved = loadInvoiceById(id);
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved.data) as InvoiceData;
+      setInvoice(data);
+      setActiveTab("form");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleDeleteInvoice = useCallback((id: string) => {
+    deleteInvoice(id);
+    setHistory(loadInvoiceHistory());
+  }, []);
+
+  const handleNewInvoice = useCallback(() => {
+    setInvoice(createEmptyInvoice());
+    setActiveTab("form");
+  }, []);
+
   if (!invoice) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -209,39 +305,60 @@ export default function InvoiceForm() {
       {/* Top Bar */}
       <header className="bg-emerald-700 text-white py-4 px-6 shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <a href="/" className="text-2xl font-bold">
+          <Link href="/" className="text-2xl font-bold">
             فوترني <span className="text-emerald-200 text-sm font-normal">Fawtarni</span>
-          </a>
-          <div className="flex gap-3">
-            {/* Tab Switcher */}
+          </Link>
+          <div className="flex gap-2 flex-wrap">
             <div className="flex bg-emerald-800 rounded-lg p-1">
               <button
                 onClick={() => setActiveTab("form")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === "form"
                     ? "bg-white text-emerald-700"
                     : "text-emerald-200 hover:text-white"
                 }`}
               >
-                ✏️ تعديل
+                تعديل
               </button>
               <button
                 onClick={() => setActiveTab("preview")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === "preview"
                     ? "bg-white text-emerald-700"
                     : "text-emerald-200 hover:text-white"
                 }`}
               >
-                👁️ معاينة
+                معاينة
+              </button>
+              <button
+                onClick={() => { setHistory(loadInvoiceHistory()); setActiveTab("history"); }}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === "history"
+                    ? "bg-white text-emerald-700"
+                    : "text-emerald-200 hover:text-white"
+                }`}
+              >
+                السجل
               </button>
             </div>
             <button
+              onClick={handleSaveInvoice}
+              className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-bold transition-colors"
+            >
+              {invoiceSaved ? "تم الحفظ" : "حفظ"}
+            </button>
+            <button
               onClick={handleDownloadPDF}
               disabled={generating}
-              className="px-4 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+              className="px-3 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
             >
-              {generating ? "جاري التحميل..." : "📥 تحميل PDF"}
+              {generating ? "جاري..." : "تحميل PDF"}
+            </button>
+            <button
+              onClick={handleNewInvoice}
+              className="px-3 py-2 bg-emerald-800 border border-emerald-600 text-emerald-200 hover:text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              + جديدة
             </button>
           </div>
         </div>
@@ -333,7 +450,53 @@ export default function InvoiceForm() {
 
               {/* Seller Info */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <SectionTitle ar="بيانات البائع" en="Seller Information" />
+                <div className="flex justify-between items-center mb-4">
+                  <SectionTitle ar="بيانات البائع" en="Seller Information" />
+                  <button
+                    onClick={handleSaveSellerData}
+                    className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    {sellerSaved ? "تم الحفظ للمرات القادمة" : "حفظ البيانات"}
+                  </button>
+                </div>
+                {/* Logo Upload */}
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    شعار الشركة <span className="text-gray-400 text-xs">/ Company Logo</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {invoice.sellerLogo ? (
+                      <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={invoice.sellerLogo}
+                          alt="Logo"
+                          className="w-20 h-20 object-contain rounded-lg border border-gray-200 bg-white"
+                        />
+                        <button
+                          onClick={handleRemoveLogo}
+                          className="absolute -top-2 -left-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                        >
+                          x
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 text-xs text-center">
+                        لا يوجد شعار
+                      </div>
+                    )}
+                    <div>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml"
+                        onChange={handleLogoUpload}
+                        className="text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG — أقل من 500KB</p>
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     label="اسم البائع"
@@ -537,13 +700,88 @@ export default function InvoiceForm() {
                 />
               </div>
 
-              {/* Preview Button at Bottom */}
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveInvoice}
+                  className="flex-1 py-4 bg-emerald-100 text-emerald-700 rounded-xl text-lg font-bold hover:bg-emerald-200 transition-colors shadow-sm"
+                >
+                  {invoiceSaved ? "تم الحفظ" : "حفظ الفاتورة"}
+                </button>
+                <button
+                  onClick={() => setActiveTab("preview")}
+                  className="flex-1 py-4 bg-emerald-600 text-white rounded-xl text-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                >
+                  معاينة الفاتورة / Preview
+                </button>
+              </div>
+          </div>
+        )}
+
+        {/* History Tab */}
+        {activeTab === "history" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">
+                سجل الفواتير <span className="text-gray-400 text-sm font-normal">/ Invoice History</span>
+              </h2>
               <button
-                onClick={() => setActiveTab("preview")}
-                className="w-full py-4 bg-emerald-600 text-white rounded-xl text-lg font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                onClick={handleNewInvoice}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors"
               >
-                👁️ معاينة الفاتورة / Preview Invoice
+                + فاتورة جديدة
               </button>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
+                <div className="text-6xl mb-4">📋</div>
+                <h3 className="text-lg font-bold text-gray-700 mb-2">لا توجد فواتير محفوظة</h3>
+                <p className="text-gray-500 text-sm mb-4">
+                  أنشئ فاتورة واحفظها عشان تظهر هنا
+                </p>
+                <button
+                  onClick={handleNewInvoice}
+                  className="px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors"
+                >
+                  أنشئ فاتورة جديدة
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex justify-between items-center hover:border-emerald-200 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="font-bold text-emerald-700 text-sm" dir="ltr">{inv.invoiceNumber}</span>
+                        <span className="text-xs text-gray-400">{inv.issueDate}</span>
+                      </div>
+                      <p className="text-gray-600 text-sm">{inv.buyerName}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-gray-800" dir="ltr">
+                        {inv.totalAmount.toFixed(2)} {CURRENCIES[inv.currency]?.symbol ?? inv.currency}
+                      </span>
+                      <button
+                        onClick={() => handleLoadInvoice(inv.id)}
+                        className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        فتح
+                      </button>
+                      <button
+                        onClick={() => handleDeleteInvoice(inv.id)}
+                        className="px-2 py-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs transition-colors"
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
