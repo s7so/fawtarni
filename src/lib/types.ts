@@ -12,6 +12,7 @@ export interface InvoiceData {
   dueDate: string;
   currency: string;
   language: "ar" | "en" | "both";
+  sellerLogo: string;
   sellerName: string;
   sellerNameEn: string;
   sellerAddress: string;
@@ -46,13 +47,42 @@ export const CURRENCIES: Record<string, { symbol: string; nameAr: string; nameEn
   JOD: { symbol: "د.أ", nameAr: "دينار أردني", nameEn: "Jordanian Dinar" },
 };
 
+const INVOICE_COUNTER_KEY = "fawtarni_invoice_counter";
+const SELLER_DATA_KEY = "fawtarni_seller_data";
+
 export function generateInvoiceNumber(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const rand = Math.floor(Math.random() * 9000 + 1000);
-  return `INV-${y}${m}${d}-${rand}`;
+  if (typeof window === "undefined") {
+    return "INV-0001";
+  }
+  const counter = parseInt(localStorage.getItem(INVOICE_COUNTER_KEY) || "0", 10) + 1;
+  localStorage.setItem(INVOICE_COUNTER_KEY, String(counter));
+  return `INV-${String(counter).padStart(4, "0")}`;
+}
+
+export interface SellerData {
+  sellerLogo: string;
+  sellerName: string;
+  sellerNameEn: string;
+  sellerAddress: string;
+  sellerTaxNumber: string;
+  sellerPhone: string;
+  sellerEmail: string;
+}
+
+export function saveSellerData(data: SellerData): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SELLER_DATA_KEY, JSON.stringify(data));
+}
+
+export function loadSellerData(): SellerData | null {
+  if (typeof window === "undefined") return null;
+  const saved = localStorage.getItem(SELLER_DATA_KEY);
+  if (!saved) return null;
+  try {
+    return JSON.parse(saved) as SellerData;
+  } catch {
+    return null;
+  }
 }
 
 export function createEmptyInvoice(): InvoiceData {
@@ -60,18 +90,21 @@ export function createEmptyInvoice(): InvoiceData {
   const due = new Date(today);
   due.setDate(due.getDate() + 30);
 
+  const savedSeller = loadSellerData();
+
   return {
     invoiceNumber: generateInvoiceNumber(),
     issueDate: today.toISOString().split("T")[0],
     dueDate: due.toISOString().split("T")[0],
     currency: "SAR",
     language: "both",
-    sellerName: "",
-    sellerNameEn: "",
-    sellerAddress: "",
-    sellerTaxNumber: "",
-    sellerPhone: "",
-    sellerEmail: "",
+    sellerLogo: savedSeller?.sellerLogo || "",
+    sellerName: savedSeller?.sellerName || "",
+    sellerNameEn: savedSeller?.sellerNameEn || "",
+    sellerAddress: savedSeller?.sellerAddress || "",
+    sellerTaxNumber: savedSeller?.sellerTaxNumber || "",
+    sellerPhone: savedSeller?.sellerPhone || "",
+    sellerEmail: savedSeller?.sellerEmail || "",
     buyerName: "",
     buyerNameEn: "",
     buyerAddress: "",

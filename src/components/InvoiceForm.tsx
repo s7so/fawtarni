@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
+import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice, saveSellerData } from "@/lib/types";
 import InvoicePreview from "./InvoicePreview";
-import html2canvas from "html2canvas-pro";
-import { jsPDF } from "jspdf";
 
 function SectionTitle({ ar, en }: { ar: string; en: string }) {
   return (
@@ -56,6 +54,7 @@ export default function InvoiceForm() {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [generating, setGenerating] = useState(false);
+  const [savedNotice, setSavedNotice] = useState(false);
 
   useEffect(() => {
     setInvoice(createEmptyInvoice());
@@ -145,11 +144,47 @@ export default function InvoiceForm() {
     [recalculate]
   );
 
+  const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) {
+      alert("حجم الصورة كبير جداً. الحد الأقصى 500KB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (dataUrl) {
+        updateField("sellerLogo", dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  }, [updateField]);
+
+  const handleSaveSellerData = useCallback(() => {
+    if (!invoice) return;
+    saveSellerData({
+      sellerLogo: invoice.sellerLogo,
+      sellerName: invoice.sellerName,
+      sellerNameEn: invoice.sellerNameEn,
+      sellerAddress: invoice.sellerAddress,
+      sellerTaxNumber: invoice.sellerTaxNumber,
+      sellerPhone: invoice.sellerPhone,
+      sellerEmail: invoice.sellerEmail,
+    });
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 2000);
+  }, [invoice]);
+
   const handleDownloadPDF = useCallback(async () => {
     if (!invoice) return;
     setGenerating(true);
+    let wrapper: HTMLDivElement | null = null;
     try {
-      const wrapper = document.createElement("div");
+      const html2canvas = (await import("html2canvas-pro")).default;
+      const { jsPDF } = await import("jspdf");
+
+      wrapper = document.createElement("div");
       wrapper.style.position = "fixed";
       wrapper.style.left = "-9999px";
       wrapper.style.top = "0";
@@ -176,8 +211,6 @@ export default function InvoiceForm() {
         width: 794,
       });
 
-      document.body.removeChild(wrapper);
-
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -189,6 +222,9 @@ export default function InvoiceForm() {
       console.error("PDF generation failed:", err);
       alert("حدث خطأ أثناء إنشاء الـ PDF. يرجى المحاولة مرة أخرى.");
     } finally {
+      if (wrapper && wrapper.parentNode) {
+        document.body.removeChild(wrapper);
+      }
       setGenerating(false);
     }
   }, [invoice]);
@@ -333,7 +369,57 @@ export default function InvoiceForm() {
 
               {/* Seller Info */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <SectionTitle ar="بيانات البائع" en="Seller Information" />
+                <div className="flex justify-between items-center mb-4">
+                  <SectionTitle ar="بيانات البائع" en="Seller Information" />
+                  <button
+                    onClick={handleSaveSellerData}
+                    className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors flex items-center gap-1"
+                  >
+                    {savedNotice ? "تم الحفظ!" : "💾 حفظ بياناتي"}
+                  </button>
+                </div>
+
+                {/* Logo Upload */}
+                <div className="mb-5 p-4 border-2 border-dashed border-gray-200 rounded-xl hover:border-emerald-300 transition-colors">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    لوجو الشركة <span className="text-gray-400 text-xs">/ Company Logo</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {invoice.sellerLogo ? (
+                      <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={invoice.sellerLogo}
+                          alt="Logo"
+                          className="w-20 h-20 object-contain rounded-lg border border-gray-200 bg-white p-1"
+                        />
+                        <button
+                          onClick={() => updateField("sellerLogo", "")}
+                          className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-3xl">
+                        🏢
+                      </div>
+                    )}
+                    <div>
+                      <label className="cursor-pointer px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-100 transition-colors inline-block">
+                        {invoice.sellerLogo ? "تغيير اللوجو" : "رفع لوجو"}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG — حد أقصى 500KB</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     label="اسم البائع"

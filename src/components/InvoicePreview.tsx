@@ -64,14 +64,24 @@ export default function InvoicePreview({ invoice }: Props) {
     >
       {/* Header */}
       <div className="flex justify-between items-start border-b-4 border-emerald-600 pb-6 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-emerald-700 mb-1">
-            <Label ar="فاتورة ضريبية" en="Tax Invoice" lang={lang} />
-          </h1>
-          <p className="text-gray-500 text-sm">
-            <Label ar="رقم الفاتورة" en="Invoice No." lang={lang} />:{" "}
-            <span className="font-semibold text-gray-700">{invoice.invoiceNumber}</span>
-          </p>
+        <div className="flex items-start gap-4">
+          {invoice.sellerLogo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={invoice.sellerLogo}
+              alt="Logo"
+              className="w-16 h-16 object-contain rounded-lg"
+            />
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-emerald-700 mb-1">
+              <Label ar="فاتورة ضريبية" en="Tax Invoice" lang={lang} />
+            </h1>
+            <p className="text-gray-500 text-sm">
+              <Label ar="رقم الفاتورة" en="Invoice No." lang={lang} />:{" "}
+              <span className="font-semibold text-gray-700">{invoice.invoiceNumber}</span>
+            </p>
+          </div>
         </div>
         <div className={`text-${isRtl ? "left" : "right"} text-sm text-gray-500`}>
           <p>
