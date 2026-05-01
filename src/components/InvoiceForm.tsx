@@ -149,14 +149,34 @@ export default function InvoiceForm() {
     if (!invoice) return;
     setGenerating(true);
     try {
+      const wrapper = document.createElement("div");
+      wrapper.style.position = "fixed";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
+      wrapper.style.width = "794px";
+      wrapper.style.backgroundColor = "#ffffff";
+      wrapper.style.zIndex = "-9999";
+
       const element = document.getElementById("invoice-preview");
       if (!element) return;
 
-      const canvas = await html2canvas(element, {
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.style.width = "794px";
+      clone.style.maxWidth = "794px";
+      clone.style.margin = "0";
+      clone.style.padding = "32px";
+      clone.style.boxSizing = "border-box";
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
+        width: 794,
       });
+
+      document.body.removeChild(wrapper);
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
