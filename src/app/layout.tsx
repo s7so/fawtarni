@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +17,23 @@ export const metadata: Metadata = {
     "ضريبة القيمة المضافة",
     "VAT",
   ],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "فوترني",
+  },
+  openGraph: {
+    title: "فوترني - Fawtarni | منصة الفواتير العربية الذكية",
+    description:
+      "أنشئ فواتير احترافية عربي/إنجليزي مجاناً مع دعم ZATCA QR Code.",
+    type: "website",
+    locale: "ar_SA",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#059669",
 };
 
 export default function RootLayout({

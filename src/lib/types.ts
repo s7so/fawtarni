@@ -18,6 +18,7 @@ export interface InvoiceData {
   sellerTaxNumber: string;
   sellerPhone: string;
   sellerEmail: string;
+  sellerLogo: string;
   buyerName: string;
   buyerNameEn: string;
   buyerAddress: string;
@@ -72,6 +73,7 @@ export function createEmptyInvoice(): InvoiceData {
     sellerTaxNumber: "",
     sellerPhone: "",
     sellerEmail: "",
+    sellerLogo: "",
     buyerName: "",
     buyerNameEn: "",
     buyerAddress: "",
