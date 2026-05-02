@@ -22,6 +22,10 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { supabaseEnabled } from "@/lib/supabase";
 import { CURRENCIES } from "@/lib/types";
+import { exportInvoicesToCSV, exportInvoicesToExcel, exportMonthlyReport } from "@/lib/export-utils";
+import RevenueChart from "@/components/RevenueChart";
+import InvoiceStatusChart from "@/components/InvoiceStatusChart";
+import TopClients from "@/components/TopClients";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -77,7 +81,7 @@ function StatCard({
   );
 }
 
-type TabType = "invoices" | "clients";
+type TabType = "invoices" | "clients" | "analytics";
 
 export default function DashboardPage() {
   const { isAuthenticated } = useAuth();
@@ -86,6 +90,41 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>("invoices");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loaded, setLoaded] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+
+  const handleQuickShare = useCallback((inv: SavedInvoice) => {
+    const cur = CURRENCIES[inv.currency];
+    const currencyName = cur ? cur.nameAr : inv.currency;
+    const amount = formatAmount(inv.totalAmount, inv.currency);
+    const subject = encodeURIComponent(`فاتورة ${inv.invoiceNumber} — ${amount}`);
+    const body = encodeURIComponent(
+      [
+        `مرحباً ${inv.buyerName || ""},`,
+        "",
+        `مرفق لكم فاتورة رقم ${inv.invoiceNumber} بمبلغ ${amount} ${currencyName}.`,
+        `تاريخ الاستحقاق: ${inv.dueDate}`,
+        "",
+        "يرجى السداد قبل تاريخ الاستحقاق.",
+        "",
+        "— فوترني | fawtarni.com",
+      ].join("\n")
+    );
+    window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+  }, []);
+
+  const handleQuickWhatsApp = useCallback((inv: SavedInvoice) => {
+    const cur = CURRENCIES[inv.currency];
+    const currencyName = cur ? cur.nameAr : inv.currency;
+    const text = [
+      `📄 *فاتورة رقم ${inv.invoiceNumber}*`,
+      `المبلغ: *${formatAmount(inv.totalAmount, inv.currency)} ${currencyName}*`,
+      `العميل: ${inv.buyerName || inv.buyerNameEn || "—"}`,
+      `الاستحقاق: ${inv.dueDate}`,
+      "",
+      "— فوترني | fawtarni.com",
+    ].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }, []);
 
   const loadData = useCallback(async () => {
     let loadedInvoices: SavedInvoice[];
@@ -147,6 +186,12 @@ export default function DashboardPage() {
     .filter((i) => i.status === "sent" || i.status === "overdue")
     .reduce((sum, i) => sum + i.totalAmount, 0);
 
+  const avgInvoice = invoices.length > 0
+    ? invoices.reduce((s, i) => s + i.totalAmount, 0) / invoices.length
+    : 0;
+
+  const overdueCount = invoices.filter((i) => i.status === "overdue").length;
+
   if (!loaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -158,10 +203,10 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-emerald-700 text-white py-4 px-6 shadow-md sticky top-0 z-50">
+      <header className="bg-emerald-700 text-white py-3 px-4 sm:py-4 sm:px-6 shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold">
-            فوترني <span className="text-emerald-200 text-sm font-normal">Fawtarni</span>
+          <Link href="/" className="text-xl sm:text-2xl font-bold">
+            فوترني <span className="text-emerald-200 text-xs sm:text-sm font-normal">Fawtarni</span>
           </Link>
           <div className="flex gap-2 items-center">
             <Link
@@ -170,9 +215,44 @@ export default function DashboardPage() {
             >
               الإعدادات
             </Link>
+            {/* Export Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 text-white rounded-lg text-sm font-bold transition-colors"
+              >
+                تصدير ↓
+              </button>
+              {showExportMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                  <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-2 w-48 z-50">
+                    <button
+                      onClick={() => { exportInvoicesToCSV(invoices); setShowExportMenu(false); }}
+                      className="w-full text-right px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      تصدير CSV
+                    </button>
+                    <button
+                      onClick={() => { exportInvoicesToExcel(invoices); setShowExportMenu(false); }}
+                      className="w-full text-right px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      تصدير Excel
+                    </button>
+                    <hr className="my-1 border-gray-100" />
+                    <button
+                      onClick={() => { exportMonthlyReport(invoices); setShowExportMenu(false); }}
+                      className="w-full text-right px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      تقرير شهري
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
             <Link
               href="/create"
-              className="px-5 py-2.5 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-sm font-bold transition-colors shadow-sm"
+              className="px-4 sm:px-5 py-2.5 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-sm font-bold transition-colors shadow-sm"
             >
               + فاتورة جديدة
             </Link>
@@ -180,13 +260,13 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Stats */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8"
         >
           <StatCard
             titleAr="إجمالي الفواتير"
@@ -198,49 +278,76 @@ export default function DashboardPage() {
           <StatCard
             titleAr="الإيرادات المحصلة"
             titleEn="Revenue"
-            value={formatAmount(totalRevenue, "SAR")}
+            value={formatAmount(totalRevenue, invoices[0]?.currency || "SAR")}
             icon="💰"
             color="bg-green-50"
           />
           <StatCard
             titleAr="مبالغ معلقة"
             titleEn="Pending"
-            value={formatAmount(pendingAmount, "SAR")}
+            value={formatAmount(pendingAmount, invoices[0]?.currency || "SAR")}
             icon="⏳"
             color="bg-amber-50"
           />
           <StatCard
-            titleAr="العملاء"
-            titleEn="Clients"
-            value={clients.length}
-            icon="👥"
-            color="bg-blue-50"
+            titleAr="متوسط الفاتورة"
+            titleEn="Avg Invoice"
+            value={formatAmount(avgInvoice, invoices[0]?.currency || "SAR")}
+            icon="📊"
+            color="bg-purple-50"
+          />
+          <StatCard
+            titleAr="فواتير متأخرة"
+            titleEn="Overdue"
+            value={overdueCount}
+            icon="🔴"
+            color="bg-red-50"
           />
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveTab("invoices")}
-            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              activeTab === "invoices"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-            }`}
-          >
-            الفواتير ({invoices.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("clients")}
-            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              activeTab === "clients"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-            }`}
-          >
-            العملاء ({clients.length})
-          </button>
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+          {(
+            [
+              { key: "invoices" as const, label: `الفواتير (${invoices.length})` },
+              { key: "clients" as const, label: `العملاء (${clients.length})` },
+              { key: "analytics" as const, label: "تحليلات" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* Analytics Tab */}
+        {activeTab === "analytics" && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
+              <motion.div variants={fadeInUp}>
+                <RevenueChart invoices={invoices} />
+              </motion.div>
+              <motion.div variants={fadeInUp}>
+                <InvoiceStatusChart invoices={invoices} />
+              </motion.div>
+            </div>
+            <motion.div variants={fadeInUp}>
+              <TopClients invoices={invoices} />
+            </motion.div>
+          </motion.div>
+        )}
 
         {/* Invoices Tab */}
         {activeTab === "invoices" && (
@@ -305,54 +412,136 @@ export default function DashboardPage() {
                     <motion.div
                       key={inv.id}
                       variants={fadeInUp}
-                      className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4"
+                      className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-gray-800 text-sm" dir="ltr">
-                            {inv.invoiceNumber}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusInfo.color}`}
-                          >
-                            {statusInfo.labelAr}
-                          </span>
+                      {/* Desktop layout */}
+                      <div className="hidden sm:flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-gray-800 text-sm" dir="ltr">
+                              {inv.invoiceNumber}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusInfo.color}`}
+                            >
+                              {statusInfo.labelAr}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500 truncate">
+                            {inv.buyerName || inv.buyerNameEn || "بدون عميل"}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">{inv.issueDate}</p>
                         </div>
-                        <p className="text-sm text-gray-500 truncate">
-                          {inv.buyerName || inv.buyerNameEn || "بدون عميل"}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{inv.issueDate}</p>
+                        <div className="text-left" dir="ltr">
+                          <p className="font-bold text-gray-800">
+                            {formatAmount(inv.totalAmount, inv.currency)}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <select
+                            value={inv.status}
+                            onChange={(e) =>
+                              handleStatusChange(inv.id, e.target.value as SavedInvoice["status"])
+                            }
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          >
+                            <option value="draft">مسودة</option>
+                            <option value="sent">مرسلة</option>
+                            <option value="paid">مدفوعة</option>
+                            <option value="overdue">متأخرة</option>
+                          </select>
+                          <button
+                            onClick={() => handleQuickShare(inv)}
+                            className="px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg text-xs font-medium transition-colors"
+                            title="إرسال بالإيميل"
+                          >
+                            📧
+                          </button>
+                          <button
+                            onClick={() => handleQuickWhatsApp(inv)}
+                            className="px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs font-medium transition-colors"
+                            title="واتساب"
+                          >
+                            💬
+                          </button>
+                          <Link
+                            href={`/create?edit=${inv.id}`}
+                            className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            تعديل
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteInvoice(inv.id)}
+                            className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors"
+                          >
+                            حذف
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-left" dir="ltr">
-                        <p className="font-bold text-gray-800">
-                          {formatAmount(inv.totalAmount, inv.currency)}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <select
-                          value={inv.status}
-                          onChange={(e) =>
-                            handleStatusChange(inv.id, e.target.value as SavedInvoice["status"])
-                          }
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        >
-                          <option value="draft">مسودة</option>
-                          <option value="sent">مرسلة</option>
-                          <option value="paid">مدفوعة</option>
-                          <option value="overdue">متأخرة</option>
-                        </select>
-                        <Link
-                          href={`/create?edit=${inv.id}`}
-                          className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          تعديل
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteInvoice(inv.id)}
-                          className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          حذف
-                        </button>
+
+                      {/* Mobile layout */}
+                      <div className="sm:hidden">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-bold text-gray-800 text-sm" dir="ltr">
+                                {inv.invoiceNumber}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusInfo.color}`}
+                              >
+                                {statusInfo.labelAr}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 truncate">
+                              {inv.buyerName || inv.buyerNameEn || "بدون عميل"}
+                            </p>
+                          </div>
+                          <p className="font-bold text-gray-800 text-sm" dir="ltr">
+                            {formatAmount(inv.totalAmount, inv.currency)}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+                          <span className="text-xs text-gray-400">{inv.issueDate}</span>
+                          <div className="flex gap-1">
+                            <select
+                              value={inv.status}
+                              onChange={(e) =>
+                                handleStatusChange(inv.id, e.target.value as SavedInvoice["status"])
+                              }
+                              className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-gray-50"
+                            >
+                              <option value="draft">مسودة</option>
+                              <option value="sent">مرسلة</option>
+                              <option value="paid">مدفوعة</option>
+                              <option value="overdue">متأخرة</option>
+                            </select>
+                            <button
+                              onClick={() => handleQuickShare(inv)}
+                              className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs"
+                            >
+                              📧
+                            </button>
+                            <button
+                              onClick={() => handleQuickWhatsApp(inv)}
+                              className="px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs"
+                            >
+                              💬
+                            </button>
+                            <Link
+                              href={`/create?edit=${inv.id}`}
+                              className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs"
+                            >
+                              تعديل
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteInvoice(inv.id)}
+                              className="px-2 py-1 bg-red-50 text-red-500 rounded-lg text-xs"
+                            >
+                              حذف
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   );

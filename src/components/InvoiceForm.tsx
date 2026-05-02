@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
-import InvoicePreview from "./InvoicePreview";
+import InvoicePreview, { type TemplateName, TEMPLATES } from "./InvoicePreview";
+import ShareInvoiceDialog from "./ShareInvoiceDialog";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import {
@@ -106,6 +107,8 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [planLimitReached, setPlanLimitReached] = useState(false);
+  const [template, setTemplate] = useState<TemplateName>("classic");
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -453,12 +456,12 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <header className="bg-emerald-700 text-white py-4 px-6 shadow-md sticky top-0 z-50">
+      <header className="bg-emerald-700 text-white py-3 px-4 sm:py-4 sm:px-6 shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold">
-            فوترني <span className="text-emerald-200 text-sm font-normal">Fawtarni</span>
+          <Link href="/" className="text-xl sm:text-2xl font-bold">
+            فوترني <span className="text-emerald-200 text-xs sm:text-sm font-normal">Fawtarni</span>
           </Link>
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-2 sm:gap-3 items-center">
             <Link
               href="/dashboard"
               className="px-3 py-2 text-emerald-200 hover:text-white text-sm transition-colors hidden sm:inline"
@@ -469,7 +472,7 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
             <div className="flex bg-emerald-800 rounded-lg p-1">
               <button
                 onClick={() => setActiveTab("form")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === "form"
                     ? "bg-white text-emerald-700"
                     : "text-emerald-200 hover:text-white"
@@ -479,7 +482,7 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
               </button>
               <button
                 onClick={() => setActiveTab("preview")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   activeTab === "preview"
                     ? "bg-white text-emerald-700"
                     : "text-emerald-200 hover:text-white"
@@ -497,22 +500,51 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
             <button
               onClick={handleDownloadPDF}
               disabled={generating}
-              className="px-4 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+              className="px-3 sm:px-4 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-lg text-sm font-bold transition-colors disabled:opacity-50 hidden sm:inline-block"
             >
-              {generating ? "جاري التحميل..." : "تحميل PDF"}
+              {generating ? "جاري..." : "تحميل PDF"}
+            </button>
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="px-3 sm:px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-colors hidden sm:inline-block"
+            >
+              إرسال
             </button>
           </div>
         </div>
       </header>
 
+      {/* Mobile Bottom Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 sm:hidden z-50 safe-area-bottom">
+        <button
+          onClick={() => handleSaveInvoice("draft")}
+          className="flex-1 py-3 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-bold transition-colors"
+        >
+          {savedInvoiceMsg ? "تم الحفظ!" : "حفظ"}
+        </button>
+        <button
+          onClick={handleDownloadPDF}
+          disabled={generating}
+          className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+        >
+          {generating ? "جاري..." : "PDF"}
+        </button>
+        <button
+          onClick={() => setShowShareDialog(true)}
+          className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors"
+        >
+          إرسال
+        </button>
+      </div>
+
       {/* Hidden preview for PDF generation (always in DOM) */}
       {activeTab !== "preview" && (
         <div className="fixed left-[-9999px] top-0" aria-hidden="true">
-          <InvoicePreview invoice={invoice} />
+          <InvoicePreview invoice={invoice} template={template} />
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 sm:pb-6">
         {/* Plan Limit Banner */}
         {planLimitReached && !editInvoiceId && (
           <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
@@ -532,7 +564,23 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
         {/* Preview Tab */}
         {activeTab === "preview" && (
           <div className="mb-6">
-            <InvoicePreview invoice={invoice} />
+            {/* Template Selector */}
+            <div className="flex gap-3 mb-4 justify-center">
+              {TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTemplate(t.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    template === t.id
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "bg-white text-gray-600 border border-gray-200 hover:border-emerald-300 hover:text-emerald-600"
+                  }`}
+                >
+                  {t.nameAr} <span className="text-xs opacity-70">/ {t.nameEn}</span>
+                </button>
+              ))}
+            </div>
+            <InvoicePreview invoice={invoice} template={template} />
           </div>
         )}
 
@@ -950,6 +998,29 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
           </div>
         )}
       </div>
+
+      {/* Share/Send Invoice Dialog */}
+      <ShareInvoiceDialog
+        invoice={{
+          invoiceNumber: invoice.invoiceNumber,
+          buyerName: invoice.buyerName || invoice.buyerNameEn || "",
+          buyerEmail: invoice.buyerEmail,
+          sellerName: invoice.sellerName || invoice.sellerNameEn || "",
+          totalAmount: invoice.totalAmount,
+          currency: invoice.currency,
+          issueDate: invoice.issueDate,
+          dueDate: invoice.dueDate,
+          items: invoice.items,
+          subtotal: invoice.subtotal,
+          taxAmount: invoice.taxAmount,
+          taxRate: invoice.taxRate,
+          discount: invoice.discount,
+          notes: invoice.notes,
+        }}
+        isOpen={showShareDialog}
+        onClose={() => setShowShareDialog(false)}
+        onDownloadPDF={handleDownloadPDF}
+      />
     </div>
   );
 }
