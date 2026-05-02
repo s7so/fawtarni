@@ -92,6 +92,40 @@ export default function DashboardPage() {
   const [loaded, setLoaded] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  const handleQuickShare = useCallback((inv: SavedInvoice) => {
+    const cur = CURRENCIES[inv.currency];
+    const currencyName = cur ? cur.nameAr : inv.currency;
+    const amount = formatAmount(inv.totalAmount, inv.currency);
+    const subject = encodeURIComponent(`فاتورة ${inv.invoiceNumber} — ${amount}`);
+    const body = encodeURIComponent(
+      [
+        `مرحباً ${inv.buyerName || ""},`,
+        "",
+        `مرفق لكم فاتورة رقم ${inv.invoiceNumber} بمبلغ ${amount} ${currencyName}.`,
+        `تاريخ الاستحقاق: ${inv.dueDate}`,
+        "",
+        "يرجى السداد قبل تاريخ الاستحقاق.",
+        "",
+        "— فوترني | fawtarni.com",
+      ].join("\n")
+    );
+    window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+  }, []);
+
+  const handleQuickWhatsApp = useCallback((inv: SavedInvoice) => {
+    const cur = CURRENCIES[inv.currency];
+    const currencyName = cur ? cur.nameAr : inv.currency;
+    const text = [
+      `📄 *فاتورة رقم ${inv.invoiceNumber}*`,
+      `المبلغ: *${formatAmount(inv.totalAmount, inv.currency)} ${currencyName}*`,
+      `العميل: ${inv.buyerName || inv.buyerNameEn || "—"}`,
+      `الاستحقاق: ${inv.dueDate}`,
+      "",
+      "— فوترني | fawtarni.com",
+    ].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }, []);
+
   const loadData = useCallback(async () => {
     let loadedInvoices: SavedInvoice[];
     let loadedClients: SavedClient[];
@@ -416,6 +450,20 @@ export default function DashboardPage() {
                             <option value="paid">مدفوعة</option>
                             <option value="overdue">متأخرة</option>
                           </select>
+                          <button
+                            onClick={() => handleQuickShare(inv)}
+                            className="px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg text-xs font-medium transition-colors"
+                            title="إرسال بالإيميل"
+                          >
+                            📧
+                          </button>
+                          <button
+                            onClick={() => handleQuickWhatsApp(inv)}
+                            className="px-3 py-1.5 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg text-xs font-medium transition-colors"
+                            title="واتساب"
+                          >
+                            💬
+                          </button>
                           <Link
                             href={`/create?edit=${inv.id}`}
                             className="px-3 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg text-xs font-medium transition-colors"
@@ -468,6 +516,18 @@ export default function DashboardPage() {
                               <option value="paid">مدفوعة</option>
                               <option value="overdue">متأخرة</option>
                             </select>
+                            <button
+                              onClick={() => handleQuickShare(inv)}
+                              className="px-2 py-1 bg-amber-50 text-amber-600 rounded-lg text-xs"
+                            >
+                              📧
+                            </button>
+                            <button
+                              onClick={() => handleQuickWhatsApp(inv)}
+                              className="px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs"
+                            >
+                              💬
+                            </button>
                             <Link
                               href={`/create?edit=${inv.id}`}
                               className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs"

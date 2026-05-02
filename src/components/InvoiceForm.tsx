@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
 import InvoicePreview, { type TemplateName, TEMPLATES } from "./InvoicePreview";
+import ShareInvoiceDialog from "./ShareInvoiceDialog";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
 import {
@@ -107,6 +108,7 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [template, setTemplate] = useState<TemplateName>("classic");
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -502,6 +504,12 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
             >
               {generating ? "جاري..." : "تحميل PDF"}
             </button>
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="px-3 sm:px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-bold transition-colors hidden sm:inline-block"
+            >
+              إرسال
+            </button>
           </div>
         </div>
       </header>
@@ -519,7 +527,13 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
           disabled={generating}
           className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
         >
-          {generating ? "جاري..." : "تحميل PDF"}
+          {generating ? "جاري..." : "PDF"}
+        </button>
+        <button
+          onClick={() => setShowShareDialog(true)}
+          className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors"
+        >
+          إرسال
         </button>
       </div>
 
@@ -984,6 +998,29 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
           </div>
         )}
       </div>
+
+      {/* Share/Send Invoice Dialog */}
+      <ShareInvoiceDialog
+        invoice={{
+          invoiceNumber: invoice.invoiceNumber,
+          buyerName: invoice.buyerName || invoice.buyerNameEn || "",
+          buyerEmail: invoice.buyerEmail,
+          sellerName: invoice.sellerName || invoice.sellerNameEn || "",
+          totalAmount: invoice.totalAmount,
+          currency: invoice.currency,
+          issueDate: invoice.issueDate,
+          dueDate: invoice.dueDate,
+          items: invoice.items,
+          subtotal: invoice.subtotal,
+          taxAmount: invoice.taxAmount,
+          taxRate: invoice.taxRate,
+          discount: invoice.discount,
+          notes: invoice.notes,
+        }}
+        isOpen={showShareDialog}
+        onClose={() => setShowShareDialog(false)}
+        onDownloadPDF={handleDownloadPDF}
+      />
     </div>
   );
 }
