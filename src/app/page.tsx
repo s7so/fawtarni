@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
 import { Float, MeshDistortMaterial, Sphere, Stars } from "@react-three/drei";
 import { useRef, Suspense } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 function AnimatedSphere() {
   return (
@@ -148,6 +149,7 @@ function CountUp({ target, suffix = "" }: { target: string; suffix?: string }) {
 }
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll();
   const navBg = useTransform(scrollYProgress, [0, 0.05], ["rgba(255,255,255,0)", "rgba(255,255,255,0.9)"]);
@@ -200,6 +202,22 @@ export default function Home() {
             >
               لوحة التحكم
             </Link>
+            {!isAuthenticated && (
+              <Link
+                href="/login"
+                className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
+              >
+                تسجيل الدخول
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                href="/settings"
+                className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
+              >
+                الإعدادات
+              </Link>
+            )}
             <Link
               href="/create"
               className="relative px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl text-sm font-bold hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-lg shadow-emerald-600/25 hover:shadow-emerald-600/40 hover:scale-105 active:scale-95"
