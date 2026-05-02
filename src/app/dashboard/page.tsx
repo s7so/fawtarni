@@ -12,6 +12,15 @@ import {
   type SavedInvoice,
   type SavedClient,
 } from "@/lib/storage";
+import {
+  getCloudInvoices,
+  getCloudClients,
+  deleteCloudInvoice,
+  deleteCloudClient,
+  updateCloudInvoiceStatus,
+} from "@/lib/cloud-storage";
+import { useAuth } from "@/lib/auth-context";
+import { supabaseEnabled } from "@/lib/supabase";
 import { CURRENCIES } from "@/lib/types";
 
 const fadeInUp = {
@@ -71,38 +80,61 @@ function StatCard({
 type TabType = "invoices" | "clients";
 
 export default function DashboardPage() {
+  const { isAuthenticated } = useAuth();
   const [invoices, setInvoices] = useState<SavedInvoice[]>([]);
   const [clients, setClients] = useState<SavedClient[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("invoices");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loaded, setLoaded] = useState(false);
 
+  const loadData = useCallback(async () => {
+    let loadedInvoices: SavedInvoice[];
+    let loadedClients: SavedClient[];
+
+    if (supabaseEnabled && isAuthenticated) {
+      loadedInvoices = await getCloudInvoices();
+      loadedClients = await getCloudClients();
+    } else {
+      loadedInvoices = getSavedInvoices();
+      loadedClients = getSavedClients();
+    }
+
+    setInvoices(loadedInvoices);
+    setClients(loadedClients);
+    setLoaded(true);
+  }, [isAuthenticated]);
+
   useEffect(() => {
-    const loadedInvoices = getSavedInvoices();
-    const loadedClients = getSavedClients();
     requestAnimationFrame(() => {
-      setInvoices(loadedInvoices);
-      setClients(loadedClients);
-      setLoaded(true);
+      loadData();
     });
-  }, []);
+  }, [loadData]);
 
-  const handleDeleteInvoice = useCallback((id: string) => {
+  const handleDeleteInvoice = useCallback(async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذه الفاتورة؟")) return;
+    if (supabaseEnabled && isAuthenticated) {
+      await deleteCloudInvoice(id);
+    }
     deleteInvoice(id);
-    setInvoices(getSavedInvoices());
-  }, []);
+    loadData();
+  }, [isAuthenticated, loadData]);
 
-  const handleStatusChange = useCallback((id: string, status: SavedInvoice["status"]) => {
+  const handleStatusChange = useCallback(async (id: string, status: SavedInvoice["status"]) => {
+    if (supabaseEnabled && isAuthenticated) {
+      await updateCloudInvoiceStatus(id, status);
+    }
     updateInvoiceStatus(id, status);
-    setInvoices(getSavedInvoices());
-  }, []);
+    loadData();
+  }, [isAuthenticated, loadData]);
 
-  const handleDeleteClient = useCallback((id: string) => {
+  const handleDeleteClient = useCallback(async (id: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا العميل؟")) return;
+    if (supabaseEnabled && isAuthenticated) {
+      await deleteCloudClient(id);
+    }
     deleteClient(id);
-    setClients(getSavedClients());
-  }, []);
+    loadData();
+  }, [isAuthenticated, loadData]);
 
   const filteredInvoices =
     statusFilter === "all" ? invoices : invoices.filter((i) => i.status === statusFilter);
@@ -131,12 +163,20 @@ export default function DashboardPage() {
           <Link href="/" className="text-2xl font-bold">
             فوترني <span className="text-emerald-200 text-sm font-normal">Fawtarni</span>
           </Link>
-          <Link
-            href="/create"
-            className="px-5 py-2.5 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-sm font-bold transition-colors shadow-sm"
-          >
-            + فاتورة جديدة
-          </Link>
+          <div className="flex gap-2 items-center">
+            <Link
+              href="/settings"
+              className="px-3 py-2 text-emerald-200 hover:text-white text-sm transition-colors hidden sm:inline"
+            >
+              الإعدادات
+            </Link>
+            <Link
+              href="/create"
+              className="px-5 py-2.5 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-sm font-bold transition-colors shadow-sm"
+            >
+              + فاتورة جديدة
+            </Link>
+          </div>
         </div>
       </header>
 

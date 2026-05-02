@@ -17,6 +17,16 @@ import {
   type SavedClient,
   type SavedInvoice,
 } from "@/lib/storage";
+import {
+  saveCloudInvoice,
+  saveCloudClient,
+  saveCloudProfile,
+  getCloudProfile,
+  getCloudClients,
+  canCreateInvoice,
+} from "@/lib/cloud-storage";
+import { useAuth } from "@/lib/auth-context";
+import { supabaseEnabled } from "@/lib/supabase";
 
 function SectionTitle({ ar, en }: { ar: string; en: string }) {
   return (
@@ -86,6 +96,7 @@ interface ValidationErrors {
 }
 
 export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string }) {
+  const { isAuthenticated } = useAuth();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [generating, setGenerating] = useState(false);
@@ -94,45 +105,66 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
   const [clients, setClients] = useState<SavedClient[]>([]);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [planLimitReached, setPlanLimitReached] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    let result: InvoiceData;
+    async function init() {
+      let result: InvoiceData;
 
-    if (editInvoiceId) {
-      const saved = getInvoiceById(editInvoiceId);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved.data) as InvoiceData;
-          result = { ...data, sellerLogo: data.sellerLogo || "" };
-        } catch {
+      if (editInvoiceId) {
+        const saved = getInvoiceById(editInvoiceId);
+        if (saved) {
+          try {
+            const data = JSON.parse(saved.data) as InvoiceData;
+            result = { ...data, sellerLogo: data.sellerLogo || "" };
+          } catch {
+            result = createEmptyInvoice();
+          }
+        } else {
           result = createEmptyInvoice();
         }
       } else {
-        result = createEmptyInvoice();
+        const newInvoice = createEmptyInvoice();
+        // Try cloud profile first, fall back to localStorage
+        let profile = null;
+        if (supabaseEnabled && isAuthenticated) {
+          profile = await getCloudProfile();
+        }
+        if (!profile) profile = getSellerProfile();
+        if (profile) {
+          newInvoice.sellerName = profile.name;
+          newInvoice.sellerNameEn = profile.nameEn;
+          newInvoice.sellerAddress = profile.address;
+          newInvoice.sellerTaxNumber = profile.taxNumber;
+          newInvoice.sellerPhone = profile.phone;
+          newInvoice.sellerEmail = profile.email;
+          newInvoice.sellerLogo = profile.logo;
+        }
+        result = newInvoice;
+
+        // Check plan limits for new invoices
+        if (supabaseEnabled && isAuthenticated) {
+          const { allowed } = await canCreateInvoice();
+          if (!allowed) setPlanLimitReached(true);
+        }
       }
-    } else {
-      const newInvoice = createEmptyInvoice();
-      const profile = getSellerProfile();
-      if (profile) {
-        newInvoice.sellerName = profile.name;
-        newInvoice.sellerNameEn = profile.nameEn;
-        newInvoice.sellerAddress = profile.address;
-        newInvoice.sellerTaxNumber = profile.taxNumber;
-        newInvoice.sellerPhone = profile.phone;
-        newInvoice.sellerEmail = profile.email;
-        newInvoice.sellerLogo = profile.logo;
+
+      let loadedClients: SavedClient[];
+      if (supabaseEnabled && isAuthenticated) {
+        loadedClients = await getCloudClients();
+      } else {
+        loadedClients = getSavedClients();
       }
-      result = newInvoice;
+
+      requestAnimationFrame(() => {
+        setInvoice(result);
+        setClients(loadedClients);
+      });
     }
 
-    const loadedClients = getSavedClients();
-    // Use requestAnimationFrame to avoid synchronous setState in effect
-    requestAnimationFrame(() => {
-      setInvoice(result);
-      setClients(loadedClients);
-    });
-  }, [editInvoiceId]);
+    init();
+  }, [editInvoiceId, isAuthenticated]);
 
   const updateField = useCallback(
     <K extends keyof InvoiceData>(field: K, value: InvoiceData[K]) => {
@@ -224,7 +256,7 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
     [recalculate]
   );
 
-  const handleSaveSellerProfile = useCallback(() => {
+  const handleSaveSellerProfile = useCallback(async () => {
     if (!invoice) return;
     const profile: SellerProfile = {
       name: invoice.sellerName,
@@ -236,9 +268,12 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       logo: invoice.sellerLogo,
     };
     saveSellerProfile(profile);
+    if (supabaseEnabled && isAuthenticated) {
+      await saveCloudProfile(profile);
+    }
     setSavedProfile(true);
     setTimeout(() => setSavedProfile(false), 2000);
-  }, [invoice]);
+  }, [invoice, isAuthenticated]);
 
   const handleLogoUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -277,7 +312,7 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
     [invoice]
   );
 
-  const handleSaveClient = useCallback(() => {
+  const handleSaveClient = useCallback(async () => {
     if (!invoice || !invoice.buyerName) return;
     const client: SavedClient = {
       id: crypto.randomUUID(),
@@ -290,8 +325,14 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       createdAt: new Date().toISOString(),
     };
     saveClient(client);
-    setClients(getSavedClients());
-  }, [invoice]);
+    if (supabaseEnabled && isAuthenticated) {
+      await saveCloudClient(client);
+      const cloudClients = await getCloudClients();
+      setClients(cloudClients);
+    } else {
+      setClients(getSavedClients());
+    }
+  }, [invoice, isAuthenticated]);
 
   const validate = useCallback((): boolean => {
     if (!invoice) return false;
@@ -313,9 +354,14 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
   }, [invoice]);
 
   const handleSaveInvoice = useCallback(
-    (status: SavedInvoice["status"] = "draft") => {
+    async (status: SavedInvoice["status"] = "draft") => {
       if (!invoice) return;
       if (!validate()) return;
+
+      if (planLimitReached && !editInvoiceId) {
+        alert("وصلت للحد الأقصى من الفواتير الشهرية. رقّي باقتك لإنشاء فواتير أكتر.");
+        return;
+      }
 
       const saved: SavedInvoice = {
         id: editInvoiceId || crypto.randomUUID(),
@@ -331,10 +377,13 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
         data: JSON.stringify(invoice),
       };
       saveInvoice(saved);
+      if (supabaseEnabled && isAuthenticated) {
+        await saveCloudInvoice(saved);
+      }
       setSavedInvoiceMsg(true);
       setTimeout(() => setSavedInvoiceMsg(false), 2000);
     },
-    [invoice, editInvoiceId, validate]
+    [invoice, editInvoiceId, validate, isAuthenticated, planLimitReached]
   );
 
   const handleDownloadPDF = useCallback(async () => {
@@ -464,6 +513,22 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       )}
 
       <div className="max-w-4xl mx-auto p-6">
+        {/* Plan Limit Banner */}
+        {planLimitReached && !editInvoiceId && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
+            <div>
+              <p className="font-bold text-amber-800 text-sm">وصلت للحد الأقصى (5 فواتير/شهر)</p>
+              <p className="text-amber-600 text-xs mt-1">رقّي باقتك لإنشاء فواتير غير محدودة</p>
+            </div>
+            <Link
+              href="/pricing"
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors"
+            >
+              ترقية الباقة
+            </Link>
+          </div>
+        )}
+
         {/* Preview Tab */}
         {activeTab === "preview" && (
           <div className="mb-6">
