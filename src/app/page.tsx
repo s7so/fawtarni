@@ -191,12 +191,6 @@ export default function Home() {
               كيف يعمل
             </a>
             <Link
-              href="/pricing"
-              className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
-            >
-              الأسعار
-            </Link>
-            <Link
               href="/dashboard"
               className="text-sm text-gray-600 hover:text-emerald-600 transition-colors hidden sm:inline"
             >

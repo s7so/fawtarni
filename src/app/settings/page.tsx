@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { getSellerProfile, saveSellerProfile, type SellerProfile } from "@/lib/storage";
-import { saveCloudProfile, getCloudProfile, migrateLocalToCloud, PLAN_LIMITS, getMonthlyInvoiceCount } from "@/lib/cloud-storage";
+import { saveCloudProfile, getCloudProfile, migrateLocalToCloud, getMonthlyInvoiceCount } from "@/lib/cloud-storage";
 import { supabaseEnabled } from "@/lib/supabase";
 
 const fadeInUp = {
@@ -14,15 +14,10 @@ const fadeInUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
-const PLAN_LABELS: Record<string, { ar: string; en: string; color: string }> = {
-  free: { ar: "مجاني", en: "Free", color: "bg-gray-100 text-gray-700" },
-  pro: { ar: "برو", en: "Pro", color: "bg-emerald-100 text-emerald-700" },
-  business: { ar: "بزنس", en: "Business", color: "bg-purple-100 text-purple-700" },
-};
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, isAuthenticated, loading, plan, signOut } = useAuth();
+  const { user, isAuthenticated, loading, signOut } = useAuth();
   const [profile, setProfile] = useState<SellerProfile>({
     name: "",
     nameEn: "",
@@ -108,8 +103,6 @@ export default function SettingsPage() {
     );
   }
 
-  const planInfo = PLAN_LABELS[plan] || PLAN_LABELS.free;
-  const limit = PLAN_LIMITS[plan].invoicesPerMonth;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,20 +158,9 @@ export default function SettingsPage() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-1">الباقة الحالية</p>
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${planInfo.color}`}>
-                  {planInfo.ar} / {planInfo.en}
-                </span>
-                <Link href="/pricing" className="text-xs text-emerald-600 hover:text-emerald-700">
-                  ترقية ←
-                </Link>
-              </div>
-            </div>
-            <div>
               <p className="text-sm text-gray-500 mb-1">فواتير هذا الشهر</p>
               <p className="font-medium text-gray-800">
-                {monthlyCount} / {limit === Infinity ? "∞" : limit}
+                {monthlyCount}
               </p>
             </div>
           </div>
