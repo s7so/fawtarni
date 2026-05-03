@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
-import { InvoiceData, InvoiceItem, CURRENCIES, createEmptyInvoice } from "@/lib/types";
+import { InvoiceData, InvoiceItem, CURRENCIES, COUNTRIES, getCountryByCode, createEmptyInvoice } from "@/lib/types";
 import InvoicePreview, { type TemplateName, TEMPLATES } from "./InvoicePreview";
 import ShareInvoiceDialog from "./ShareInvoiceDialog";
 import html2canvas from "html2canvas-pro";
@@ -177,6 +177,32 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       }
     },
     [errors.sellerName]
+  );
+
+  const handleCountryChange = useCallback(
+    (countryCode: string) => {
+      const country = getCountryByCode(countryCode);
+      if (!country) return;
+      setInvoice((prev) => {
+        if (!prev) return prev;
+        const items = prev.items;
+        const discount = prev.discount;
+        const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+        const afterDiscount = subtotal - discount;
+        const taxAmount = (afterDiscount * country.taxRate) / 100;
+        const totalAmount = afterDiscount + taxAmount;
+        return {
+          ...prev,
+          country: countryCode,
+          currency: country.currency,
+          taxRate: country.taxRate,
+          subtotal,
+          taxAmount,
+          totalAmount,
+        };
+      });
+    },
+    []
   );
 
   const recalculate = useCallback((items: InvoiceItem[], taxRate: number, discount: number) => {
@@ -614,6 +640,22 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
                 />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    الدولة <span className="text-gray-400 text-xs">/ Country</span>
+                  </label>
+                  <select
+                    value={invoice.country}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  >
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.nameAr} — {c.taxNameAr} {c.taxRate}%
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     العملة <span className="text-gray-400 text-xs">/ Currency</span>
                   </label>
                   <select
@@ -948,10 +990,18 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
             {/* Tax & Discount */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <SectionTitle ar="الضريبة والخصم" en="Tax & Discount" />
+              {(() => {
+                const countryInfo = getCountryByCode(invoice.country);
+                return countryInfo && countryInfo.code !== "OTHER" ? (
+                  <div className="mb-4 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
+                    {countryInfo.nameAr}: {countryInfo.taxNameAr} ({countryInfo.taxRate}%) — يمكنك تعديل النسبة يدوياً
+                  </div>
+                ) : null;
+              })()}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                  label="نسبة الضريبة (%)"
-                  labelEn="Tax Rate (%)"
+                  label={`نسبة الضريبة (%) — ${getCountryByCode(invoice.country)?.taxNameAr || "ضريبة"}`}
+                  labelEn={`Tax Rate (%) — ${getCountryByCode(invoice.country)?.taxNameEn || "Tax"}`}
                   value={invoice.taxRate}
                   onChange={updateTaxRate}
                   type="number"

@@ -6,11 +6,47 @@ export interface InvoiceItem {
   total: number;
 }
 
+export interface CountryTax {
+  code: string;
+  nameAr: string;
+  nameEn: string;
+  taxRate: number;
+  taxNameAr: string;
+  taxNameEn: string;
+  currency: string;
+}
+
+export const COUNTRIES: CountryTax[] = [
+  { code: "SA", nameAr: "السعودية", nameEn: "Saudi Arabia", taxRate: 15, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "SAR" },
+  { code: "EG", nameAr: "مصر", nameEn: "Egypt", taxRate: 14, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "EGP" },
+  { code: "AE", nameAr: "الإمارات", nameEn: "UAE", taxRate: 5, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "AED" },
+  { code: "KW", nameAr: "الكويت", nameEn: "Kuwait", taxRate: 0, taxNameAr: "بدون ضريبة", taxNameEn: "No Tax", currency: "KWD" },
+  { code: "QA", nameAr: "قطر", nameEn: "Qatar", taxRate: 0, taxNameAr: "بدون ضريبة", taxNameEn: "No Tax", currency: "QAR" },
+  { code: "BH", nameAr: "البحرين", nameEn: "Bahrain", taxRate: 10, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "BHD" },
+  { code: "OM", nameAr: "عُمان", nameEn: "Oman", taxRate: 5, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "OMR" },
+  { code: "JO", nameAr: "الأردن", nameEn: "Jordan", taxRate: 16, taxNameAr: "ضريبة المبيعات", taxNameEn: "Sales Tax", currency: "JOD" },
+  { code: "IQ", nameAr: "العراق", nameEn: "Iraq", taxRate: 15, taxNameAr: "ضريبة المبيعات", taxNameEn: "Sales Tax", currency: "USD" },
+  { code: "LB", nameAr: "لبنان", nameEn: "Lebanon", taxRate: 11, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "USD" },
+  { code: "PS", nameAr: "فلسطين", nameEn: "Palestine", taxRate: 16, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "USD" },
+  { code: "LY", nameAr: "ليبيا", nameEn: "Libya", taxRate: 0, taxNameAr: "بدون ضريبة", taxNameEn: "No Tax", currency: "USD" },
+  { code: "SD", nameAr: "السودان", nameEn: "Sudan", taxRate: 17, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "USD" },
+  { code: "TN", nameAr: "تونس", nameEn: "Tunisia", taxRate: 19, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "USD" },
+  { code: "DZ", nameAr: "الجزائر", nameEn: "Algeria", taxRate: 19, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "USD" },
+  { code: "MA", nameAr: "المغرب", nameEn: "Morocco", taxRate: 20, taxNameAr: "ضريبة القيمة المضافة", taxNameEn: "VAT", currency: "USD" },
+  { code: "YE", nameAr: "اليمن", nameEn: "Yemen", taxRate: 5, taxNameAr: "ضريبة المبيعات", taxNameEn: "Sales Tax", currency: "USD" },
+  { code: "OTHER", nameAr: "أخرى", nameEn: "Other", taxRate: 0, taxNameAr: "ضريبة", taxNameEn: "Tax", currency: "USD" },
+];
+
+export function getCountryByCode(code: string): CountryTax | undefined {
+  return COUNTRIES.find((c) => c.code === code);
+}
+
 export interface InvoiceData {
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
   currency: string;
+  country: string;
   language: "ar" | "en" | "both";
   sellerName: string;
   sellerNameEn: string;
@@ -66,6 +102,7 @@ export function createEmptyInvoice(): InvoiceData {
     issueDate: today.toISOString().split("T")[0],
     dueDate: due.toISOString().split("T")[0],
     currency: "SAR",
+    country: "SA",
     language: "both",
     sellerName: "",
     sellerNameEn: "",
