@@ -1,6 +1,6 @@
 "use client";
 
-import { InvoiceData, CURRENCIES } from "@/lib/types";
+import { InvoiceData, CURRENCIES, getCountryByCode } from "@/lib/types";
 
 function formatAmount(amount: number, currency: string): string {
   const cur = CURRENCIES[currency];
@@ -186,7 +186,7 @@ export default function TemplateClassic({ invoice, qrDataUrl }: Props) {
           )}
           <div className="flex justify-between py-2 border-b border-gray-200">
             <span className="text-gray-600">
-              <Label ar={`ضريبة القيمة المضافة (${invoice.taxRate}%)`} en={`VAT (${invoice.taxRate}%)`} lang={lang} />
+              <Label ar={`${getCountryByCode(invoice.country)?.taxNameAr || "ضريبة"} (${invoice.taxRate}%)`} en={`${getCountryByCode(invoice.country)?.taxNameEn || "Tax"} (${invoice.taxRate}%)`} lang={lang} />
             </span>
             <span className="font-semibold" dir="ltr">
               {formatAmount(invoice.taxAmount, invoice.currency)}
