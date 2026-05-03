@@ -24,7 +24,6 @@ import {
   saveCloudProfile,
   getCloudProfile,
   getCloudClients,
-  canCreateInvoice,
 } from "@/lib/cloud-storage";
 import { useAuth } from "@/lib/auth-context";
 import { supabaseEnabled } from "@/lib/supabase";
@@ -106,7 +105,6 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
   const [clients, setClients] = useState<SavedClient[]>([]);
   const [showClientPicker, setShowClientPicker] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [planLimitReached, setPlanLimitReached] = useState(false);
   const [template, setTemplate] = useState<TemplateName>("classic");
   const [showShareDialog, setShowShareDialog] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -146,11 +144,6 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
         }
         result = newInvoice;
 
-        // Check plan limits for new invoices
-        if (supabaseEnabled && isAuthenticated) {
-          const { allowed } = await canCreateInvoice();
-          if (!allowed) setPlanLimitReached(true);
-        }
       }
 
       let loadedClients: SavedClient[];
@@ -387,11 +380,6 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       if (!invoice) return;
       if (!validate()) return;
 
-      if (planLimitReached && !editInvoiceId) {
-        alert("وصلت للحد الأقصى من الفواتير الشهرية. رقّي باقتك لإنشاء فواتير أكتر.");
-        return;
-      }
-
       const saved: SavedInvoice = {
         id: editInvoiceId || crypto.randomUUID(),
         invoiceNumber: invoice.invoiceNumber,
@@ -412,7 +400,7 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       setSavedInvoiceMsg(true);
       setTimeout(() => setSavedInvoiceMsg(false), 2000);
     },
-    [invoice, editInvoiceId, validate, isAuthenticated, planLimitReached]
+    [invoice, editInvoiceId, validate, isAuthenticated]
   );
 
   const handleDownloadPDF = useCallback(async () => {
@@ -571,22 +559,6 @@ export default function InvoiceForm({ editInvoiceId }: { editInvoiceId?: string 
       )}
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 sm:pb-6">
-        {/* Plan Limit Banner */}
-        {planLimitReached && !editInvoiceId && (
-          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
-            <div>
-              <p className="font-bold text-amber-800 text-sm">وصلت للحد الأقصى (5 فواتير/شهر)</p>
-              <p className="text-amber-600 text-xs mt-1">رقّي باقتك لإنشاء فواتير غير محدودة</p>
-            </div>
-            <Link
-              href="/pricing"
-              className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 transition-colors"
-            >
-              ترقية الباقة
-            </Link>
-          </div>
-        )}
-
         {/* Preview Tab */}
         {activeTab === "preview" && (
           <div className="mb-6">
