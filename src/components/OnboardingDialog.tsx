@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const ONBOARDING_KEY = "fawtarni_onboarding_seen";
 
@@ -38,6 +38,7 @@ const steps = [
 ];
 
 export default function OnboardingDialog() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -159,13 +160,15 @@ export default function OnboardingDialog() {
                   التالي
                 </button>
               ) : (
-                <Link
-                  href="/create"
-                  onClick={handleClose}
+                <button
+                  onClick={() => {
+                    handleClose();
+                    router.push("/create");
+                  }}
                   className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors"
                 >
                   أنشئ فاتورتك الأولى
-                </Link>
+                </button>
               )}
             </div>
           </motion.div>
