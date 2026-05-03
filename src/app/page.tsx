@@ -578,27 +578,46 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-gray-950 text-gray-400 py-16 px-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-          >
-            <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-              فوترني
-            </span>
-            <span className="text-sm text-gray-600 mr-2">Fawtarni</span>
-            <p className="text-sm mt-2 text-gray-500">منصة الفواتير العربية الذكية</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-sm text-center md:text-left"
-          >
-            <p className="text-gray-400">صُنع بالتعاون بين الإنسان والذكاء الاصطناعي</p>
-            <p className="text-gray-600 mt-1">Built by Human + AI collaboration</p>
-          </motion.div>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+            >
+              <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                فوترني
+              </span>
+              <span className="text-sm text-gray-600 mr-2">Fawtarni</span>
+              <p className="text-sm mt-2 text-gray-500">منصة الفواتير العربية الذكية</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="flex gap-8"
+            >
+              <div>
+                <p className="text-sm font-bold text-gray-300 mb-3">المنصة</p>
+                <div className="flex flex-col gap-2">
+                  <Link href="/create" className="text-sm text-gray-500 hover:text-emerald-400 transition-colors">أنشئ فاتورة</Link>
+                  <Link href="/dashboard" className="text-sm text-gray-500 hover:text-emerald-400 transition-colors">لوحة التحكم</Link>
+                  <Link href="/about" className="text-sm text-gray-500 hover:text-emerald-400 transition-colors">عن فوترني</Link>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-300 mb-3">قانوني</p>
+                <div className="flex flex-col gap-2">
+                  <Link href="/privacy" className="text-sm text-gray-500 hover:text-emerald-400 transition-colors">سياسة الخصوصية</Link>
+                  <Link href="/terms" className="text-sm text-gray-500 hover:text-emerald-400 transition-colors">شروط الاستخدام</Link>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+          <div className="border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} فوترني — جميع الحقوق محفوظة</p>
+            <p className="text-xs text-gray-600">صُنع بالتعاون بين الإنسان والذكاء الاصطناعي</p>
+          </div>
         </div>
       </footer>
     </div>
