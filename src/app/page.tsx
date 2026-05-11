@@ -253,7 +253,7 @@ export default function Home() {
             className="inline-flex items-center gap-2 px-5 py-2 bg-emerald-500/15 backdrop-blur-md rounded-full text-sm mb-8 border border-emerald-400/30"
           >
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            مجاني 100% — لا حاجة لبطاقة ائتمان
+            مجاني لفترة محدودة — لا حاجة لبطاقة ائتمان
           </motion.div>
 
           <motion.h1
@@ -295,7 +295,7 @@ export default function Home() {
               href="/create"
               className="group relative px-10 py-5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl text-lg font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-2xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 overflow-hidden"
             >
-              <span className="relative z-10">ابدأ الآن — مجاناً</span>
+              <span className="relative z-10">ابدأ الآن — مجاناً لفترة محدودة</span>
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
             </Link>
             <a
@@ -561,7 +561,7 @@ export default function Home() {
             </span>
           </motion.h2>
           <motion.p variants={fadeInUp} className="text-emerald-200/80 text-xl mb-10 leading-relaxed">
-            ابدأ الآن مجاناً — بدون تسجيل، بدون بطاقة ائتمان، بدون قيود
+            ابدأ الآن مجاناً لفترة محدودة — بدون تسجيل، بدون بطاقة ائتمان
           </motion.p>
           <motion.div variants={fadeInUp}>
             <Link
