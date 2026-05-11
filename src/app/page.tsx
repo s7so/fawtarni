@@ -563,7 +563,7 @@ export default function Home() {
             </span>
           </motion.h2>
           <motion.p variants={fadeInUp} className="text-emerald-200/80 text-xl mb-10 leading-relaxed">
-            ابدأ الآن مجاناً لفترة محدودة — بدون تسجيل، بدون بطاقة ائتمان
+            ابدأ الآن مجاناً لفترة محدودة — أنشئ حسابك الآن وابدأ استخدام المنصة
           </motion.p>
           <motion.div variants={fadeInUp}>
             <Link

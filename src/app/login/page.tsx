@@ -172,15 +172,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Skip */}
-        <p className="mt-4 text-center">
-          <Link
-            href="/create"
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            تخطي وابدأ بدون حساب ←
-          </Link>
-        </p>
       </div>
     </div>
   );
