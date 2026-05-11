@@ -6,6 +6,7 @@ import { Canvas } from "@react-three/fiber";
 import { Float, MeshDistortMaterial, Sphere, Stars } from "@react-three/drei";
 import { useRef, Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
+import OnboardingDialog from "@/components/OnboardingDialog";
 
 function AnimatedSphere() {
   return (
@@ -157,6 +158,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 overflow-x-hidden">
+      <OnboardingDialog />
       {/* Navbar */}
       <motion.nav
         style={{ backgroundColor: navBg, boxShadow: navShadow }}
