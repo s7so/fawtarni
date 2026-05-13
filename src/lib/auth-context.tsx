@@ -20,7 +20,6 @@ interface AuthState {
   plan: "free" | "pro" | "business";
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
 }
@@ -33,7 +32,6 @@ const AuthContext = createContext<AuthState>({
   plan: "free",
   signUp: async () => ({ error: null }),
   signIn: async () => ({ error: null }),
-  signInWithGoogle: async () => ({ error: null }),
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
 });
@@ -116,19 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-    const supabase = getSupabase();
-    if (!supabase) return { error: "Supabase not configured" };
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined,
-      },
-    });
-    return { error: error?.message ?? null };
-  }, []);
-
   const signOut = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) return;
@@ -155,7 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         plan,
         signUp,
         signIn,
-        signInWithGoogle,
         signOut,
         resetPassword,
       }}
